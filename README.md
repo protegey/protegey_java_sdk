@@ -25,7 +25,7 @@ mvn install
 <dependency>
   <groupId>com.protegey</groupId>
   <artifactId>protegey-sdk</artifactId>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
 </dependency>
 ```
 
@@ -35,6 +35,7 @@ Source: [github.com/protegey/protegey_java_sdk](https://github.com/protegey/prot
 
 ```java
 import com.protegey.sdk.Protegey;
+import java.util.HashMap;
 import java.util.Map;
 
 Protegey protegey = new Protegey("YOUR_API_KEY", "https://api.protegey.com");
@@ -49,6 +50,19 @@ Map<String, Object> result = protegey.transactions.report(Map.of(
     "transactionType", "cashout",
     "isCash", true
 ));
+
+// Bank/telco: channel, counterpartyInstitutionCode and counterpartyCountry let Pan Studio rules
+// target bank-wire and cross-border scenarios, not just mobile-money structuring.
+Map<String, Object> wire = new HashMap<>();
+wire.put("externalTransactionId", "tx-00235");
+wire.put("externalCustomerId", "cust-9981");
+wire.put("direction", "DEBIT");
+wire.put("amount", 2000000);
+wire.put("transactionType", "wire");
+wire.put("channel", "online");
+wire.put("counterpartyInstitutionCode", "ECOBKTGTG");
+wire.put("counterpartyCountry", "SN");
+protegey.transactions.report(wire);
 
 // Identity verification — no manual API call needed, the SDK starts the session and hands back the link
 Map<String, Object> session = protegey.kyc.startSession("cust-9981");

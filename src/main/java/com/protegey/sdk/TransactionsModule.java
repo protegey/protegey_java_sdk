@@ -23,7 +23,12 @@ public class TransactionsModule {
      * {@code "mobile_app"}|{@code "ussd"}|{@code "agent"}|{@code "api"}|{@code "call_center"}),
      * {@code counterpartyInstitutionCode} (SWIFT/BIC or a local bank/MNO code),
      * {@code counterpartyCountry} (compare against the customer's own {@code country} in a Pan
-     * Studio rule to flag cross-border activity).
+     * Studio rule to flag cross-border activity), {@code lastPasswordChangeAt} /
+     * {@code lastEmailChangeAt} / {@code lastPhoneChangeAt} (ISO 8601 — if you track when a
+     * credential last changed, this lets a Pan Studio rule flag a large transaction shortly
+     * after, a classic account-takeover pattern; {@code lastPhoneChangeAt} also covers a SIM
+     * swap for telcos. Omit any of them and the corresponding rule field simply never fires —
+     * Protegey never guesses this).
      */
     public Map<String, Object> report(Map<String, Object> input) {
         Map<String, Object> body = new HashMap<>(input);

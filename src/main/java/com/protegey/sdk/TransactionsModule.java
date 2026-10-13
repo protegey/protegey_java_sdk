@@ -28,7 +28,10 @@ public class TransactionsModule {
      * credential last changed, this lets a Pan Studio rule flag a large transaction shortly
      * after, a classic account-takeover pattern; {@code lastPhoneChangeAt} also covers a SIM
      * swap for telcos. Omit any of them and the corresponding rule field simply never fires —
-     * Protegey never guesses this).
+     * Protegey never guesses this), {@code accountBalanceBefore} (the account balance right
+     * before this transaction, if you track it — lets a Pan Studio rule flag a withdrawal/
+     * transfer that drains most of the balance, a classic mule-account/account-drain signal;
+     * only meaningful for a DEBIT).
      */
     public Map<String, Object> report(Map<String, Object> input) {
         Map<String, Object> body = new HashMap<>(input);

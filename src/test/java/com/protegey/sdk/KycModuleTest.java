@@ -26,7 +26,7 @@ class KycModuleTest {
             if ("POST".equals(exchange.getRequestMethod())) {
                 response = "{\"sessionId\":\"sess_abc\",\"url\":\"https://verify.provider.me/session/abc\"}";
             } else {
-                response = "{\"sessionId\":\"sess_1\",\"status\":\"Approved\"}";
+                response = "{\"sessionId\":\"sess_1\",\"status\":\"APPROVED\"}";
             }
             byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
@@ -59,6 +59,6 @@ class KycModuleTest {
 
         var result = protegey.kyc.getSession("sess/1");
 
-        assertEquals("Approved", result.get("status"));
+        assertEquals("APPROVED", result.get("status"));
     }
 }

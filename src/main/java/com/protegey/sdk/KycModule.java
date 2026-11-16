@@ -2,6 +2,7 @@ package com.protegey.sdk;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
 
 public class KycModule {
@@ -16,7 +17,21 @@ public class KycModule {
      * needed. Returns a map with {@code sessionId} and {@code url} (the hosted verification link).
      */
     public Map<String, Object> startSession(String externalUserId) {
-        return http.post("/partner-api/kyc/sessions", Map.of("externalUserId", externalUserId));
+        return startSession(externalUserId, null, null);
+    }
+
+    /**
+     * Same as {@link #startSession(String)}, with optional {@code email}/{@code phone} — never
+     * Protegey-verified, trusted as given, same model as any other self-reported field. Feeds
+     * identity-resolution's cross-partner matching (MEDIUM-tier). Pass {@code null} for either
+     * one to omit it.
+     */
+    public Map<String, Object> startSession(String externalUserId, String email, String phone) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("externalUserId", externalUserId);
+        if (email != null) body.put("email", email);
+        if (phone != null) body.put("phone", phone);
+        return http.post("/partner-api/kyc/sessions", body);
     }
 
     /**

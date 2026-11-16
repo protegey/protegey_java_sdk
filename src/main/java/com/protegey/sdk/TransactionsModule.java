@@ -31,7 +31,11 @@ public class TransactionsModule {
      * Protegey never guesses this), {@code accountBalanceBefore} (the account balance right
      * before this transaction, if you track it — lets a Pan Studio rule flag a withdrawal/
      * transfer that drains most of the balance, a classic mule-account/account-drain signal;
-     * only meaningful for a DEBIT).
+     * only meaningful for a DEBIT), {@code customerName} (the customer's display name, as you
+     * know it — self-declared, never verified by Protegey; shows up directly in the Pan Studio
+     * transactions table instead of just the opaque {@code externalCustomerId}; send it once and
+     * it's remembered on this customer's later transactions too, even if you omit it on some of
+     * them).
      */
     public Map<String, Object> report(Map<String, Object> input) {
         Map<String, Object> body = new HashMap<>(input);

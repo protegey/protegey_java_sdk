@@ -24,7 +24,7 @@ class KycModuleTest {
         server.createContext("/partner-api/kyc/sessions", exchange -> {
             String response;
             if ("POST".equals(exchange.getRequestMethod())) {
-                response = "{\"sessionId\":\"sess_abc\",\"url\":\"https://verify.didit.me/session/abc\"}";
+                response = "{\"sessionId\":\"sess_abc\",\"url\":\"https://kyc.protegey.com/?enrollmentId=sess_abc&token=abc123\"}";
             } else {
                 response = "{\"sessionId\":\"sess_1\",\"status\":\"APPROVED\"}";
             }
@@ -50,7 +50,7 @@ class KycModuleTest {
         var result = protegey.kyc.startSession("cust-1");
 
         assertEquals("sess_abc", result.get("sessionId"));
-        assertEquals("https://verify.didit.me/session/abc", result.get("url"));
+        assertEquals("https://kyc.protegey.com/?enrollmentId=sess_abc&token=abc123", result.get("url"));
     }
 
     @Test

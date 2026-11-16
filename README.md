@@ -45,6 +45,7 @@ Map<String, Object> result = protegey.transactions.report(Map.of(
     "externalTransactionId", "tx-00234",
     "externalCustomerId", "cust-9981",
     "customerName", "Awa Diallo", // self-declared, shows up directly in the Pan Studio transactions table
+    "devicePhoneNumber", "+221771234567", // your own customer-account identifier, not extracted from the device
     "direction", "DEBIT",
     "amount", 250000,
     "currency", "XOF",
@@ -68,6 +69,9 @@ protegey.transactions.report(wire);
 // Identity verification — no manual API call needed, the SDK starts the session and hands back the link
 Map<String, Object> session = protegey.kyc.startSession("cust-9981");
 // Send session.get("url") to your user however you like (SMS, email, your own hosted redirect page)
+
+// Optional email/phone feed Protegey's cross-partner identity-resolution matching — pass null for either to omit it
+Map<String, Object> sessionWithContact = protegey.kyc.startSession("cust-9981", "awa@example.com", "+221771234567");
 
 // Polling fallback — webhook delivery is best-effort (one retry, no queue), so use this if you're
 // not sure a delivery ever arrived, or just want to double-check a session's status.

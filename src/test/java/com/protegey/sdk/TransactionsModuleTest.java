@@ -53,7 +53,7 @@ class TransactionsModuleTest {
     @Test
     void reportReturnsTheDecision() throws IOException {
         String baseUrl = startServerReturning(201,
-            "{\"transactionId\":\"tx-1\",\"decision\":\"clear\",\"riskScore\":0,\"alerts\":[],\"deviceAction\":null}");
+            "{\"transactionId\":\"tx-1\",\"decision\":\"CLEAR\",\"riskScore\":0,\"alerts\":[],\"deviceAction\":null}");
         Protegey protegey = new Protegey("key", baseUrl, HttpClient.newHttpClient());
 
         var result = protegey.transactions.report(Map.of(
@@ -65,14 +65,14 @@ class TransactionsModuleTest {
         ));
 
         assertEquals("tx-1", result.get("transactionId"));
-        assertEquals("clear", result.get("decision"));
+        assertEquals("CLEAR", result.get("decision"));
     }
 
     @Test
     void reportForwardsChannelCounterpartyInstitutionCodeAndCounterpartyCountry() throws IOException {
         AtomicReference<String> captured = new AtomicReference<>();
         String baseUrl = startServerCapturingRequestBody(201,
-            "{\"transactionId\":\"tx-1\",\"decision\":\"clear\",\"riskScore\":0,\"alerts\":[],\"deviceAction\":null}", captured);
+            "{\"transactionId\":\"tx-1\",\"decision\":\"CLEAR\",\"riskScore\":0,\"alerts\":[],\"deviceAction\":null}", captured);
         Protegey protegey = new Protegey("key", baseUrl, HttpClient.newHttpClient());
 
         var wire = new java.util.HashMap<String, Object>();

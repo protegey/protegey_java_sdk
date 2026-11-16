@@ -35,7 +35,9 @@ public class TransactionsModule {
      * know it — self-declared, never verified by Protegey; shows up directly in the Pan Studio
      * transactions table instead of just the opaque {@code externalCustomerId}; send it once and
      * it's remembered on this customer's later transactions too, even if you omit it on some of
-     * them).
+     * them), {@code devicePhoneNumber} (the partner already knows this — it's your own
+     * customer's account identifier, never extracted from the device; unrelated to device
+     * fingerprinting, which this SDK doesn't collect).
      */
     public Map<String, Object> report(Map<String, Object> input) {
         Map<String, Object> body = new HashMap<>(input);

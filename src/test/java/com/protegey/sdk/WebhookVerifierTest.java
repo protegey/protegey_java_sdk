@@ -24,7 +24,7 @@ class WebhookVerifierTest {
     void acceptsACorrectlySignedPayload() throws Exception {
         String secret = "whsec_test123";
         String timestamp = "1700000000";
-        String payload = "{\"event\":\"kyc.session.updated\"}";
+        String payload = "{\"type\":\"kyc.status_changed\",\"eventId\":\"e1\",\"status\":\"APPROVED\"}";
         String signature = sign(timestamp, payload, secret);
 
         assertTrue(WebhookVerifier.verify(payload, timestamp, signature, secret));
@@ -40,9 +40,38 @@ class WebhookVerifierTest {
     }
 
     @Test
+    void acceptsARealWebhookShapeAndUppercaseHexSignature() throws Exception {
+        String secret = "aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789-_abcde";
+        String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
+        String payload = "{\"type\":\"kyb.status_changed\",\"eventId\":\"e1\",\"clientId\":\"c1\",\"status\":\"ACTIVE\","
+            + "\"submissionStatus\":\"approved\",\"decision\":\"APPROVE\"}";
+        String signature = sign(timestamp, payload, secret).toUpperCase();
+
+        assertTrue(WebhookVerifier.verify(payload, timestamp, signature, secret));
+        assertTrue(WebhookVerifier.verify(payload, timestamp, signature, secret, 300));
+    }
+
+    @Test
+    void rejectsAStaleTimestampWhenAToleranceIsGiven() throws Exception {
+        String secret = "s";
+        String timestamp = "1700000000";
+        String payload = "{}";
+        String signature = sign(timestamp, payload, secret);
+
+        assertTrue(WebhookVerifier.verify(payload, timestamp, signature, secret));
+        assertFalse(WebhookVerifier.verify(payload, timestamp, signature, secret, 300));
+    }
+
+    @Test
+    void rejectsMissingHeaders() {
+        assertFalse(WebhookVerifier.verify("{}", null, "abc", "s"));
+        assertFalse(WebhookVerifier.verify("{}", "1", null, "s"));
+    }
+
+    @Test
     void rejectsAWrongSecret() throws Exception {
         String timestamp = "1700000000";
-        String payload = "{\"event\":\"kyc.session.updated\"}";
+        String payload = "{\"type\":\"kyc.status_changed\",\"eventId\":\"e1\",\"status\":\"APPROVED\"}";
         String signature = sign(timestamp, payload, "whsec_correct");
 
         assertFalse(WebhookVerifier.verify(payload, timestamp, signature, "whsec_wrong"));

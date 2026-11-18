@@ -6,11 +6,11 @@
 
     <groupId>com.protegey</groupId>
     <artifactId>protegey-sdk</artifactId>
-    <version>0.6.0</version>
+    <version>0.7.0</version>
     <packaging>jar</packaging>
 
     <name>Protegey SDK</name>
-    <description>Official Protegey SDK for Java backends — transaction reporting, identity verification sessions, and webhook signature verification.</description>
+    <description>Official Protegey SDK for Java backends — the full partner API (transactions, KYC, KYB, alerts, device/behavioral events, sanctions, shared signals) and webhook signature verification.</description>
     <url>https://github.com/protegey/protegey_java_sdk</url>
 
     <properties>

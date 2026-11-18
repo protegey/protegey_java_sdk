@@ -1,3 +1,17 @@
+## 0.7.0
+
+Brings the SDK in line with the full partner API (23 endpoints).
+
+- New modules: `kyb` (list/get/invite/resendInvitation/screen/decide + approve/reject/requestMoreInfo), `alerts` (list/get/update/convertToCase/flagTransaction), `deviceEvents.record()`, `behavioralEvents.record()`, `sanctions.screen()`, `sharedSignal.check()`.
+- `kyc`: added `listSessions()`, `updateSession()`, `resendSession()`. `listSessions()` converts an UPPER_SNAKE_CASE `status` filter to the Title Case value the backend requires.
+- `transactions`: added `list()` and `get()` (by Protegey id or your external id).
+- `kyb.invite()` takes `contactEmail` and/or `contactPhone` (at least one) and the response carries `applicationUrl`; so do `resendInvitation()` (which returns the submission, not the applicant) and `requestMoreInfo()`. Leaked internal fields (`tokenHash`, `documentFilePath`) are stripped from KYB responses.
+- Casing handled for you where the backend is strict: alert `status`/`disposition` list filters are lowercased, sanctions `type` is lowercased.
+- `ProtegeyApiException` now exposes `getErrorCode()` (`PARTNER_SUSPENDED` / `PARTNER_CONTRACT_REQUIRED`) and `getBody()`.
+- `WebhookVerifier`: null-safe, accepts an uppercase hex signature, new `verify(..., toleranceSeconds)` overload for replay protection, and constants for header names and the six event types.
+- Behavior change: request bodies now serialize explicit `null` values (needed to clear alert fields on PATCH). Omit a key instead of setting it to null if you don't want it sent.
+- Docs: removed the stale "one retry" webhook note — deliveries are retried up to 5 times over ~3h.
+
 ## 0.6.0
 
 - `kyc.startSession()` gained an overload accepting optional `email`/`phone`: `startSession(externalUserId, email, phone)`. Never Protegey-verified, trusted as given — feeds identity-resolution's cross-partner matching. The existing single-argument `startSession(externalUserId)` is unchanged and still works.

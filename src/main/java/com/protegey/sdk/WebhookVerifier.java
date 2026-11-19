@@ -22,6 +22,14 @@ import java.util.Locale;
  * {@link #ALERT_CREATED}, {@link #ALERT_STATUS_CHANGED}, {@link #TRANSACTION_BLOCKED},
  * {@link #WEBHOOK_TEST}. Deliveries are retried (up to 5 attempts over ~3h) — deduplicate on
  * {@code eventId}, and ignore types you don't know.
+ *
+ * <p>{@code kyc.status_changed} = {@code {type, eventId, externalUserId, status, recommendation,
+ * sessionId, decision}} — fired on an automatic result and on a manual status change (dashboard or
+ * {@link KycModule#updateSession}); {@code sessionId} is the id {@code startSession()} returned.
+ * {@code kyb.status_changed} = {@code {type, eventId, clientId, status, submissionStatus,
+ * decision}}. Every status-like value ({@code status}, {@code submissionStatus},
+ * {@code decision}, {@code decision.manualReview.previousStatus/newStatus},
+ * {@code recommendation}) is UPPER_SNAKE_CASE.
  */
 public final class WebhookVerifier {
     public static final String SIGNATURE_HEADER = "X-Signature";

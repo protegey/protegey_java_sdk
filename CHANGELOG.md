@@ -24,7 +24,7 @@ Brings the SDK in line with the full partner API (23 endpoints).
 - `kyc.startSession()` gained an overload accepting optional `email`/`phone`: `startSession(externalUserId, email, phone)`. Never Protegey-verified, trusted as given — feeds identity-resolution's cross-partner matching. The existing single-argument `startSession(externalUserId)` is unchanged and still works.
 - `transactions.report()`'s Javadoc and the README now document `devicePhoneNumber` — the partner's own customer-account identifier, never extracted from the device (it has nothing to do with device fingerprinting, which this SDK doesn't collect). No code change: the SDK already forwarded this key, it just wasn't documented.
 - Fixed test fixtures that used a stale lowercase `decision` value (`"clear"`) — the real wire value from `POST /partner-api/transactions` is always uppercase (`CLEAR`/`REVIEW`/`BLOCKED`). No SDK behavior changed; this only affected test assertions.
-- Fixed a `KycModuleTest` fixture using a leftover third-party provider URL; the real `url` returned by `POST /partner-api/kyc/sessions` is a Protegey-hosted biometric capture link (`kyc.protegey.com`), never a third-party redirect. Test-only change.
+- Fixed a `KycModuleTest` fixture using a leftover third-party provider URL; the real `url` returned by `POST /partner-api/kyc/sessions` is a Protegey-hosted identity verification link (`kyc.protegey.com`), never a third-party redirect. Test-only change.
 
 ## 0.5.0
 

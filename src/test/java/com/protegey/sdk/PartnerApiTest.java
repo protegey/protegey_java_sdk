@@ -259,4 +259,117 @@ class PartnerApiTest {
         assertEquals("name should not be empty, type must be one of", ex.getMessage());
         assertNull(ex.getErrorCode());
     }
+    // ---- KYC: recommendation, images, externalUserId, setStatus ----
+
+    @Test
+    void kycFindByExternalUserIdSendsTheExactFilterAndExposesRecommendationAndImages() {
+        server.reply(200, "{\"data\":[{\"sessionId\":\"s1\",\"externalUserId\":\"cust 1\",\"status\":\"APPROVED\",\"recommendation\":\"APPROVE\","
+            + "\"images\":{\"documentFront\":{\"url\":\"https://s3.test/doc.jpg?X-Amz-Signature=a\",\"expiresAt\":\"2026-11-19T13:00:00.000Z\"},\"documentBack\":null,\"selfie\":null,\"documentFaceCrop\":null}}],"
+            + "\"total\":1,\"page\":1,\"limit\":20,\"totalPages\":1}");
+
+        Map<String, Object> page = protegey.kyc.findByExternalUserId("cust 1");
+
+        assertEquals("GET", server.method);
+        assertEquals("/partner-api/kyc/sessions?externalUserId=cust%201", server.pathAndQuery);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> row = (Map<String, Object>) ((List<?>) page.get("data")).get(0);
+        assertEquals("APPROVE", row.get("recommendation"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> images = (Map<String, Object>) row.get("images");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> front = (Map<String, Object>) images.get("documentFront");
+        assertEquals("2026-11-19T13:00:00.000Z", front.get("expiresAt"));
+        assertTrue(images.containsKey("documentBack"));
+        assertNull(images.get("documentBack"));
+    }
+
+    @Test
+    void kycSetStatusPatchesAnUppercasedStatusAndTheReviewNote() {
+        server.reply(200, "{\"sessionId\":\"s1\",\"status\":\"DECLINED\",\"recommendation\":\"APPROVE\",\"decision\":{\"manualReview\":{\"previousStatus\":\"APPROVED\",\"newStatus\":\"DECLINED\"}}}");
+
+        Map<String, Object> result = protegey.kyc.setStatus("s1", "declined", "Forged document");
+
+        assertEquals("PATCH", server.method);
+        assertEquals("/partner-api/kyc/sessions/s1", server.pathAndQuery);
+        assertTrue(server.body.contains("\"status\":\"DECLINED\""));
+        assertTrue(server.body.contains("\"reviewNote\":\"Forged document\""));
+        assertEquals("APPROVE", result.get("recommendation"));
+
+        protegey.kyc.setStatus("s1", "in review", null);
+        assertEquals("{\"status\":\"IN_REVIEW\"}", server.body);
+    }
+
+    // ---- Cash deposits ----
+
+    @Test
+    void cashDepositRecordPostsTheBodyAndReturnsTheDecision() {
+        server.reply(201, "{\"cashDepositId\":\"cd-1\",\"externalTransactionId\":\"dep-0001\",\"decision\":\"REVIEW\",\"riskScore\":20,"
+            + "\"alerts\":[{\"id\":\"al-1\",\"alertNumber\":1043,\"ruleCode\":\"IND006-KYC1\",\"status\":\"OPEN\",\"decisionVerdict\":\"REVIEW\",\"triggeredAt\":\"2026-11-18T09:30:01.204Z\"}]}");
+        Map<String, Object> input = new HashMap<>();
+        input.put("externalTransactionId", "dep-0001");
+        input.put("externalCustomerId", "cust-9981");
+        input.put("amount", 2500000);
+        input.put("currency", "XOF");
+        input.put("channel", "BRANCH");
+        input.put("metadata", Map.of("tellerId", "T-04"));
+
+        Map<String, Object> result = protegey.cashDeposits.record(input);
+
+        assertEquals("POST", server.method);
+        assertEquals("/partner-api/cash-deposits", server.pathAndQuery);
+        assertTrue(server.body.contains("\"amount\":2500000"));
+        assertTrue(server.body.contains("\"tellerId\":\"T-04\""));
+        assertFalse(server.body.contains("depositedAt"));
+        assertEquals("cd-1", result.get("cashDepositId"));
+        assertEquals("REVIEW", result.get("decision"));
+        assertEquals(1, ((List<?>) result.get("alerts")).size());
+    }
+
+    @Test
+    void cashDepositRecordSurfacesA409OnADuplicateExternalTransactionId() {
+        server.reply(409, "{\"statusCode\":409,\"message\":\"Transaction already submitted\",\"error\":\"Conflict\"}");
+
+        ProtegeyApiException ex = assertThrows(ProtegeyApiException.class, () -> protegey.cashDeposits.record(Map.of(
+            "externalTransactionId", "dep-0001", "externalCustomerId", "cust-9981", "amount", 1000, "currency", "XOF")));
+
+        assertEquals(409, ex.getStatus());
+        assertEquals("Transaction already submitted", ex.getMessage());
+    }
+
+    @Test
+    void cashDepositListSendsEveryFilterAndKeepsAmountAsAString() {
+        server.reply(200, "{\"data\":[{\"cashDepositId\":\"cd-1\",\"amount\":\"2500000.00\",\"channel\":\"BRANCH\"}],\"total\":1,\"page\":1,\"limit\":100,\"totalPages\":1}");
+        Map<String, Object> q = new java.util.LinkedHashMap<>();
+        q.put("page", 1);
+        q.put("limit", 100);
+        q.put("dateFrom", "2026-11-01");
+        q.put("dateTo", "2026-11-30");
+        q.put("externalCustomerId", "cust-9981");
+        q.put("minAmount", 1000000);
+        q.put("maxAmount", 5000000);
+        q.put("currency", "XOF");
+        q.put("channel", "BRANCH");
+        q.put("decision", "REVIEW");
+        q.put("branchId", "DKR-PLATEAU");
+        q.put("agentId", null);
+
+        Map<String, Object> page = protegey.cashDeposits.list(q);
+
+        assertEquals("/partner-api/cash-deposits?page=1&limit=100&dateFrom=2026-11-01&dateTo=2026-11-30&externalCustomerId=cust-9981"
+            + "&minAmount=1000000&maxAmount=5000000&currency=XOF&channel=BRANCH&decision=REVIEW&branchId=DKR-PLATEAU", server.pathAndQuery);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> row = (Map<String, Object>) ((List<?>) page.get("data")).get(0);
+        assertEquals("2500000.00", row.get("amount"));
+    }
+
+    @Test
+    void cashDepositGetAcceptsAnExternalTransactionId() {
+        server.reply(200, "{\"cashDepositId\":\"cd-1\",\"externalTransactionId\":\"dep 1\",\"alerts\":[]}");
+
+        Map<String, Object> result = protegey.cashDeposits.get("dep 1");
+
+        assertEquals("GET", server.method);
+        assertEquals("/partner-api/cash-deposits/dep%201", server.pathAndQuery);
+        assertEquals("cd-1", result.get("cashDepositId"));
+    }
 }

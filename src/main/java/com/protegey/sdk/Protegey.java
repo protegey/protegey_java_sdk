@@ -28,6 +28,7 @@ import java.net.http.HttpClient;
  */
 public class Protegey {
     public final TransactionsModule transactions;
+    public final CashDepositsModule cashDeposits;
     public final KycModule kyc;
     public final KybModule kyb;
     public final AlertsModule alerts;
@@ -43,6 +44,7 @@ public class Protegey {
     public Protegey(String apiKey, String baseUrl, HttpClient httpClient) {
         Client http = new Client(apiKey, baseUrl, httpClient);
         this.transactions = new TransactionsModule(http);
+        this.cashDeposits = new CashDepositsModule(http);
         this.kyc = new KycModule(http);
         this.kyb = new KybModule(http);
         this.alerts = new AlertsModule(http);

@@ -1,7 +1,7 @@
 # protegey-sdk (Java)
 
 Official Protegey SDK for Java backends — the full partner API (`/partner-api/*`): transactions,
-KYC sessions, KYB applicants, alerts, device and behavioral events, sanctions screening and the
+cash deposits, KYC sessions, KYB applicants, alerts, device and behavioral events, sanctions screening and the
 shared fraud signal network, plus webhook signature verification. Called directly from your server
 with your own API key.
 
@@ -27,7 +27,7 @@ mvn install
 <dependency>
   <groupId>com.protegey</groupId>
   <artifactId>protegey-sdk</artifactId>
-  <version>0.7.0</version>
+  <version>0.8.0</version>
 </dependency>
 ```
 
@@ -40,9 +40,10 @@ Source: [github.com/protegey/protegey_java_sdk](https://github.com/protegey/prot
   per UTC day.
 - Every method returns a plain `Map<String, Object>`, so new fields or enum values never break you.
   Gson parses JSON numbers as `Double` (`riskScore` → `20.0`).
-- Status-like values (`status`, `decision`, `action`, `deviceAction`, `category`, `outcome`, ...)
-  are UPPER_SNAKE_CASE on the wire. A few keys stay lowercase: `ruleSeverity`, `priority`,
-  sanctions `source`/`type`, KYB `submissionStatus` in the webhook.
+- Status-like values (`status`, `decision`, `action`, `deviceAction`, `category`, `outcome`,
+  `submissionStatus`, `previousStatus`/`newStatus`, KYC `recommendation`, ...) are
+  UPPER_SNAKE_CASE on the wire. A few keys stay lowercase: `ruleSeverity`, `priority`, sanctions
+  `source`/`type`.
 - List methods return `{data, total, page, limit, totalPages}` and accept `page`/`limit` (max 100).
   Where the backend only accepts a specific casing for a filter, the SDK converts it for you: KYC
   `status` (`IN_REVIEW` → `In Review`), alert `status`/`disposition` (lowercased), sanctions `type`
@@ -86,6 +87,28 @@ Map<String, Object> tx = protegey.transactions.get("tx-00234"); // Protegey id o
 Note that `amount` is a decimal string (`"250000.00"`) in `transactions.list()` and in alert
 `transaction` snapshots.
 
+### Cash deposits
+
+```java
+Map<String, Object> deposit = new HashMap<>();
+deposit.put("externalTransactionId", "dep-0001"); // optional, generated if omitted — send it: a repeat gets a 409
+deposit.put("externalCustomerId", "cust-9981");
+deposit.put("customerName", "Moussa Traoré");
+deposit.put("amount", 2500000);
+deposit.put("currency", "XOF");                   // ISO 4217, required
+deposit.put("channel", "BRANCH");
+deposit.put("branchId", "DKR-PLATEAU");
+deposit.put("depositorName", "Awa Diallo");       // who brought the cash, if not the account holder
+deposit.put("metadata", Map.of("tellerId", "T-04"));
+Map<String, Object> recorded = protegey.cashDeposits.record(deposit); // depositedAt defaults to now
+// cashDepositId, externalTransactionId, decision (CLEAR|REVIEW|BLOCKED), riskScore, alerts[]
+
+protegey.cashDeposits.list(Map.of("dateFrom", "2026-11-01", "minAmount", 1000000, "channel", "BRANCH"));
+// filters: page, limit (≤100), dateFrom, dateTo, externalCustomerId, minAmount, maxAmount,
+// currency, channel, decision, branchId, agentId — amount is a decimal string ("2500000.00")
+protegey.cashDeposits.get("dep-0001"); // Protegey cashDepositId or your externalTransactionId, + alerts
+```
+
 ### Identity verification (KYC)
 
 ```java
@@ -93,12 +116,26 @@ Map<String, Object> session = protegey.kyc.startSession("cust-9981", "awa@exampl
 // Send session.get("url") to your user (single-use, valid 30 minutes)
 
 Map<String, Object> current = protegey.kyc.getSession((String) session.get("sessionId"));
-// status, outcome (SUCCESS|MANUAL|FAILED|null), decision, fullName, ..., base64 photos
+// status (final decision), outcome (SUCCESS|MANUAL|FAILED|null),
+// recommendation (APPROVE|REVIEW|REJECT|null — Protegey's verdict, never changed by an override),
+// decision, fullName, ..., images
 
 protegey.kyc.listSessions(Map.of("status", "IN_REVIEW"));
-protegey.kyc.updateSession(sessionId, Map.of("status", "APPROVED", "reviewNote", "Checked in branch"));
+protegey.kyc.findByExternalUserId("cust-9981");  // exact match on your customer id
+protegey.kyc.setStatus(sessionId, "APPROVED", "Checked in branch"); // = updateSession(status + reviewNote)
+protegey.kyc.updateSession(sessionId, Map.of("fullName", "Awa Diallo")); // correct an OCR misread
 protegey.kyc.resendSession(sessionId); // fresh link, status RESUBMITTED
 ```
+
+Photos come as pre-signed links in `images` (on `getSession()` and every `listSessions()` row):
+`documentFront`, `documentBack`, `selfie`, `documentFaceCrop`, each `{url, expiresAt}` or null.
+Links are valid for **1 hour** and re-issued on every GET — fetch the session again instead of
+storing a URL. `getSession()` still returns the legacy base64 photo fields for backward
+compatibility.
+
+A manual status change (`setStatus()`/`updateSession()` or the dashboard) is recorded in
+`decision.manualReview` (`reviewedBy`, `reviewedAt`, `previousStatus`, `newStatus`, `note`) and
+fires the `kyc.status_changed` webhook like an automatic result.
 
 ### Business onboarding (KYB)
 
@@ -178,9 +215,13 @@ time; the 5-argument overload also rejects timestamps more than N seconds from n
 Event `type`s: `kyc.status_changed`, `kyb.status_changed`, `alert.created`,
 `alert.status_changed`, `transaction.blocked`, `webhook.test` (constants on `WebhookVerifier`).
 Failed deliveries are retried up to 5 times over ~3 hours — deduplicate on `eventId` and ignore
-unknown types. `kyc.status_changed` carries `externalUserId` but no usable session id
-(`sessionId` is always null), so correlate on `externalUserId`; it only fires on a capture result,
-not on `kyc.updateSession()`.
+unknown types.
+
+- `kyc.status_changed`: `{type, eventId, externalUserId, status, recommendation, sessionId,
+  decision}` — fires on an automatic result **and** on a manual status change (dashboard or
+  `kyc.setStatus()`/`updateSession()`). `sessionId` is the id `startSession()` returned.
+- `kyb.status_changed`: `{type, eventId, clientId, status, submissionStatus, decision}` —
+  `submissionStatus` is UPPER_SNAKE_CASE (e.g. `APPROVED`).
 
 ## `baseUrl` — no default, on purpose
 

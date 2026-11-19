@@ -1,3 +1,10 @@
+## 0.8.0
+
+- New `cashDeposits` module: `record()` (POST `/partner-api/cash-deposits` — a repeated `externalTransactionId` throws a 409 `ProtegeyApiException`), `list()` (filters page, limit ≤ 100, dateFrom, dateTo, externalCustomerId, minAmount, maxAmount, currency, channel, decision, branchId, agentId) and `get()` (by Protegey `cashDepositId` or your `externalTransactionId`, with alerts). `amount` comes back as a decimal string.
+- `kyc`: `recommendation` (APPROVE | REVIEW | REJECT | null — Protegey's verdict, unchanged by a manual override) and an `images` map (`documentFront`, `documentBack`, `selfie`, `documentFaceCrop`, each `{url, expiresAt}` or null — pre-signed links valid 1 h, re-issued on every GET) documented on `listSessions()` / `getSession()`; `updateSession()` returns `recommendation` too.
+- `kyc.listSessions()` accepts an exact `externalUserId` filter; new shorthands `findByExternalUserId()` and `setStatus(sessionId, status, reviewNote)`.
+- Docs fixes: `kyc.status_changed` also fires on a manual status change, its `sessionId` is the session id (not null) and it carries `recommendation`; `kyb.status_changed` `submissionStatus` and `decision.manualReview.previousStatus` / `newStatus` are UPPER_SNAKE_CASE (previously documented as lowercase). Webhooks: up to 5 attempts over ~3 h, deduplicate on `eventId`.
+
 ## 0.7.0
 
 Brings the SDK in line with the full partner API (23 endpoints).

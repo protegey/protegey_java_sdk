@@ -1,3 +1,8 @@
+## 0.9.0
+
+- New `liveness` module — 3D liveness, a separate paid product (KYC is unaffected): `startSession(externalUserId)` (selfie-only liveness check), `startReverification(externalUserId[, referenceVerificationId])` (liveness, then a 3D:3D match against the customer's KYC face), `getSession()` and `listSessions()`. Each start returns a hosted single-use `url`, valid 30 minutes.
+- A reverification of someone with no KYC face on record throws a 400 `ProtegeyApiException` whose `getErrorCode()` is `NO_3D_ENROLLMENT` (constant `ProtegeyApiException.NO_3D_ENROLLMENT`).
+
 ## 0.8.0
 
 - New `cashDeposits` module: `record()` (POST `/partner-api/cash-deposits` — a repeated `externalTransactionId` throws a 409 `ProtegeyApiException`), `list()` (filters page, limit ≤ 100, dateFrom, dateTo, externalCustomerId, minAmount, maxAmount, currency, channel, decision, branchId, agentId) and `get()` (by Protegey `cashDepositId` or your `externalTransactionId`, with alerts). `amount` comes back as a decimal string.

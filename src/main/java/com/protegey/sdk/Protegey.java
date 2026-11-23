@@ -30,6 +30,7 @@ public class Protegey {
     public final TransactionsModule transactions;
     public final CashDepositsModule cashDeposits;
     public final KycModule kyc;
+    public final LivenessModule liveness;
     public final KybModule kyb;
     public final AlertsModule alerts;
     public final DeviceEventsModule deviceEvents;
@@ -46,6 +47,7 @@ public class Protegey {
         this.transactions = new TransactionsModule(http);
         this.cashDeposits = new CashDepositsModule(http);
         this.kyc = new KycModule(http);
+        this.liveness = new LivenessModule(http);
         this.kyb = new KybModule(http);
         this.alerts = new AlertsModule(http);
         this.deviceEvents = new DeviceEventsModule(http);

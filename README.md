@@ -1,7 +1,7 @@
 # protegey-sdk (Java)
 
 Official Protegey SDK for Java backends — the full partner API (`/partner-api/*`): transactions,
-cash deposits, KYC sessions, KYB applicants, alerts, device and behavioral events, sanctions screening and the
+cash deposits, KYC sessions, 3D liveness, KYB applicants, alerts, device and behavioral events, sanctions screening and the
 shared fraud signal network, plus webhook signature verification. Called directly from your server
 with your own API key.
 
@@ -49,7 +49,8 @@ Source: [github.com/protegey/protegey_java_sdk](https://github.com/protegey/prot
   `status` (`IN_REVIEW` → `In Review`), alert `status`/`disposition` (lowercased), sanctions `type`
   (lowercased).
 - Non-2xx responses throw `ProtegeyApiException` with `getStatus()`, `getMessage()`,
-  `getErrorCode()` (`PARTNER_SUSPENDED` / `PARTNER_CONTRACT_REQUIRED` on 403, else null) and
+  `getErrorCode()` (`PARTNER_SUSPENDED` / `PARTNER_CONTRACT_REQUIRED` on 403, `NO_3D_ENROLLMENT` on
+  400 from `liveness.startReverification()`, else null) and
   `getBody()`.
 
 ## Usage
@@ -136,6 +137,35 @@ compatibility.
 A manual status change (`setStatus()`/`updateSession()` or the dashboard) is recorded in
 `decision.manualReview` (`reviewedBy`, `reviewedAt`, `previousStatus`, `newStatus`, `note`) and
 fires the `kyc.status_changed` webhook like an automatic result.
+
+### 3D liveness
+
+A separate, paid product (billed per check where liveness was proven); KYC is unaffected.
+
+```java
+import com.protegey.sdk.LivenessModule;
+import com.protegey.sdk.ProtegeyApiException;
+
+// Selfie-only 3D liveness check (externalUserId optional — pass null to omit)
+Map<String, Object> session = protegey.liveness.startSession("cust-9981");
+// Send session.get("url") to your user (single-use, valid 30 minutes)
+
+// Re-verification: liveness, then a 3D:3D match against the face of the customer's latest KYC
+try {
+    Map<String, Object> reverif = protegey.liveness.startReverification("cust-9981");
+} catch (ProtegeyApiException e) {
+    if (LivenessModule.NO_3D_ENROLLMENT.equals(e.getErrorCode())) {
+        // 400: no KYC face on file for this customer — run protegey.kyc.startSession() first
+    }
+}
+
+Map<String, Object> result = protegey.liveness.getSession((String) session.get("sessionId"));
+// status (PENDING|COMPLETED|EXPIRED), livenessProven (bool|null),
+// matchLevel (0 = different person, 15 = same person, or null), matched (re-verification only),
+// attempts, billableChecks, amount (decimal string), currency (USD), checks[]
+
+protegey.liveness.listSessions(Map.of("externalUserId", "cust-9981", "mode", "REVERIFICATION"));
+```
 
 ### Business onboarding (KYB)
 

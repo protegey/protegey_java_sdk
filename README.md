@@ -150,7 +150,7 @@ import com.protegey.sdk.ProtegeyApiException;
 Map<String, Object> session = protegey.liveness.startSession("cust-9981");
 // Send session.get("url") to your user (single-use, valid 30 minutes)
 
-// Re-verification: liveness, then a 3D:3D match against the face of the customer's latest KYC
+// Re-verification: liveness, then a face match against the face of the customer's latest KYC
 try {
     Map<String, Object> reverif = protegey.liveness.startReverification("cust-9981");
 } catch (ProtegeyApiException e) {
@@ -161,7 +161,7 @@ try {
 
 Map<String, Object> result = protegey.liveness.getSession((String) session.get("sessionId"));
 // status (PENDING|COMPLETED|EXPIRED), livenessProven (bool|null),
-// matchLevel (0 = different person, 15 = same person, or null), matched (re-verification only),
+// matchLevel (higher means a stronger match; 0 means a different person; or null), matched (re-verification only),
 // attempts, billableChecks, amount (decimal string), currency (USD), checks[]
 
 protegey.liveness.listSessions(Map.of("externalUserId", "cust-9981", "mode", "REVERIFICATION"));

@@ -1,6 +1,6 @@
 ## 0.9.0
 
-- New `liveness` module — 3D liveness, a separate paid product (KYC is unaffected): `startSession(externalUserId)` (selfie-only liveness check), `startReverification(externalUserId[, referenceVerificationId])` (liveness, then a 3D:3D match against the customer's KYC face), `getSession()` and `listSessions()`. Each start returns a hosted single-use `url`, valid 30 minutes.
+- New `liveness` module — 3D liveness, a separate paid product (KYC is unaffected): `startSession(externalUserId)` (selfie-only liveness check), `startReverification(externalUserId[, referenceVerificationId])` (liveness, then a face match against the customer's KYC face), `getSession()` and `listSessions()`. Each start returns a hosted single-use `url`, valid 30 minutes.
 - A reverification of someone with no KYC face on record throws a 400 `ProtegeyApiException` whose `getErrorCode()` is `NO_3D_ENROLLMENT` (constant `ProtegeyApiException.NO_3D_ENROLLMENT`).
 
 ## 0.8.0
@@ -29,7 +29,7 @@ Brings the SDK in line with the full partner API (23 endpoints).
 - `kyc.startSession()` gained an overload accepting optional `email`/`phone`: `startSession(externalUserId, email, phone)`. Never Protegey-verified, trusted as given — feeds identity-resolution's cross-partner matching. The existing single-argument `startSession(externalUserId)` is unchanged and still works.
 - `transactions.report()`'s Javadoc and the README now document `devicePhoneNumber` — the partner's own customer-account identifier, never extracted from the device (it has nothing to do with device fingerprinting, which this SDK doesn't collect). No code change: the SDK already forwarded this key, it just wasn't documented.
 - Fixed test fixtures that used a stale lowercase `decision` value (`"clear"`) — the real wire value from `POST /partner-api/transactions` is always uppercase (`CLEAR`/`REVIEW`/`BLOCKED`). No SDK behavior changed; this only affected test assertions.
-- Fixed a `KycModuleTest` fixture using a leftover third-party provider URL; the real `url` returned by `POST /partner-api/kyc/sessions` is a Protegey-hosted identity verification link (`kyc.protegey.com`), never a third-party redirect. Test-only change.
+- Fixed a `KycModuleTest` fixture using a leftover third-party URL; the real `url` returned by `POST /partner-api/kyc/sessions` is a Protegey-hosted identity verification link, never a third-party redirect. Test-only change.
 
 ## 0.5.0
 

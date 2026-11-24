@@ -22,7 +22,7 @@ class WebhookVerifierTest {
 
     @Test
     void acceptsACorrectlySignedPayload() throws Exception {
-        String secret = "whsec_test123";
+        String secret = "test_webhook_secret_not_real";
         String timestamp = "1700000000";
         String payload = "{\"type\":\"kyc.status_changed\",\"eventId\":\"e1\",\"status\":\"APPROVED\"}";
         String signature = sign(timestamp, payload, secret);
@@ -32,7 +32,7 @@ class WebhookVerifierTest {
 
     @Test
     void rejectsATamperedPayload() throws Exception {
-        String secret = "whsec_test123";
+        String secret = "test_webhook_secret_not_real";
         String timestamp = "1700000000";
         String signature = sign(timestamp, "{\"event\":\"original\"}", secret);
 
@@ -41,7 +41,7 @@ class WebhookVerifierTest {
 
     @Test
     void acceptsARealWebhookShapeAndUppercaseHexSignature() throws Exception {
-        String secret = "aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789-_abcde";
+        String secret = "test_webhook_secret_not_real";
         String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
         String payload = "{\"type\":\"kyb.status_changed\",\"eventId\":\"e1\",\"clientId\":\"c1\",\"status\":\"ACTIVE\","
             + "\"submissionStatus\":\"approved\",\"decision\":\"APPROVE\"}";

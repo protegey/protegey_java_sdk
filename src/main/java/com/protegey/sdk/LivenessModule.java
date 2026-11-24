@@ -9,18 +9,18 @@ import java.util.Map;
  * KYC: a sandbox key only sees sandbox sessions.
  *
  * <p>Two modes: {@code LIVENESS} (a selfie-only 3D liveness check) and {@code REVERIFICATION}
- * (liveness, then a 3D:3D match against the face of that customer's latest KYC verification).
+ * (liveness, then a face match against the face of that customer's latest KYC verification).
  *
  * <p>Status values on the wire are UPPERCASE: {@code PENDING}, {@code COMPLETED},
  * {@code EXPIRED}. {@code livenessProven} is a boolean or null (no result yet); {@code matchLevel}
- * is an int or null — 0 means a different person, 15 the same person; {@code matched} is a boolean
+ * is an int or null — higher means a stronger match; 0 means a different person; {@code matched} is a boolean
  * or null and only set on a re-verification. {@code amount} is a decimal string in {@code currency}
  * ({@code USD}), the sum of the billable {@code checks}.
  */
 public class LivenessModule {
     /** A selfie-only 3D liveness check. */
     public static final String MODE_LIVENESS = "LIVENESS";
-    /** Liveness, then a 3D:3D match against the customer's latest KYC face. */
+    /** Liveness, then a face match against the customer's latest KYC face. */
     public static final String MODE_REVERIFICATION = "REVERIFICATION";
     /**
      * {@link ProtegeyApiException#getErrorCode()} on a 400 from {@link #startReverification}: no
@@ -48,7 +48,7 @@ public class LivenessModule {
 
     /**
      * Starts a re-verification session ({@code mode: REVERIFICATION}) for one of your customers:
-     * liveness, then a 3D:3D match against the face of their latest KYC verification. Same
+     * liveness, then a face match against the face of their latest KYC verification. Same
      * response as {@link #startSession}. Throws a 400 {@link ProtegeyApiException} with
      * {@code errorCode} {@link #NO_3D_ENROLLMENT} if that customer has no KYC face yet.
      */

@@ -20,8 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * network call to Protegey's API. */
 class LivenessModuleTest {
     private static final String CREATED = "{\"sessionId\":\"liv_1\",\"mode\":\"LIVENESS\",\"status\":\"PENDING\","
-        + "\"externalUserId\":\"cust-1\",\"url\":\"https://kyc.protegey.com/liveness?token=abc\","
-        + "\"captureUrl\":\"https://kyc.protegey.com/liveness?token=abc\",\"expiresInMinutes\":30}";
+        + "\"externalUserId\":\"cust-1\",\"url\":\"https://capture.example.test/liveness?token=abc\","
+        + "\"captureUrl\":\"https://capture.example.test/liveness?token=abc\",\"expiresInMinutes\":30}";
 
     private RecordingServer server;
     private Protegey protegey;
@@ -50,7 +50,7 @@ class LivenessModuleTest {
         assertTrue(server.body.contains("\"externalUserId\":\"cust-1\""));
         assertFalse(server.body.contains("referenceVerificationId"));
         assertEquals("liv_1", result.get("sessionId"));
-        assertEquals("https://kyc.protegey.com/liveness?token=abc", result.get("url"));
+        assertEquals("https://capture.example.test/liveness?token=abc", result.get("url"));
         assertEquals(30.0, result.get("expiresInMinutes"));
     }
 

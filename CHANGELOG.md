@@ -1,3 +1,10 @@
+## 0.10.0
+
+- `kyb`: new `requestKycVerification(clientId[, options])` (POST `/partner-api/kyb/applicants/{clientId}/kyc-sessions` — optional `fullName`, `email`, `phone`, `externalUserId`; returns `{sessionId, kybClientId, url, expiresAt, emailedTo}`, the link is emailed only when `email` is given) and `listKycVerifications(clientId)` (`{data: [{sessionId, status, outcome, recommendation, expectedName, documentFullName, nameMatch, livenessScore, faceMatchScore, livemode, createdAt, updatedAt}]}`). `getApplicant()` also returns `kycVerifications`.
+- `kyc`: `startSession()` and `resendSession()` return `expiresAt`. The capture-link lifetime is now a per-partner setting in the portal's KYC settings (30 min, 1 h, 24 h, 3 days or 7 days), **24 h by default** (was a fixed 30 minutes); a KYB-linked check always gets at least 7 days. Sessions carry `kybClientId` (list rows, detail, `updateSession()`); `getSession()` adds `kybNameMatch` (MATCH | MISMATCH | null) and `decision.documentFullName`. The `kyc.status_changed` webhook carries `kybClientId` and `kybNameMatch`.
+- `transactions.report()` and `deviceEvents.record()` accept an optional GPS `location` (`latitude`, `longitude`, `accuracyMeters`, `capturedAt`, `isMocked`); transaction responses (`report()`, `get()`) include `location` (`{latitude, longitude, accuracyMeters, isMocked, gpsIpDistanceKm, impliedTravelSpeedKmh, isNewGpsArea}` or null, rounded to ~100 m).
+- Liveness links are unchanged (30 minutes).
+
 ## 0.9.0
 
 - New `liveness` module — 3D liveness, a separate paid product (KYC is unaffected): `startSession(externalUserId)` (selfie-only liveness check), `startReverification(externalUserId[, referenceVerificationId])` (liveness, then a face match against the customer's KYC face), `getSession()` and `listSessions()`. Each start returns a hosted single-use `url`, valid 30 minutes.

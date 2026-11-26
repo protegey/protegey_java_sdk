@@ -27,7 +27,7 @@ mvn install
 <dependency>
   <groupId>com.protegey</groupId>
   <artifactId>protegey-sdk</artifactId>
-  <version>0.9.0</version>
+  <version>0.10.0</version>
 </dependency>
 ```
 
@@ -76,10 +76,13 @@ Map<String, Object> result = protegey.transactions.report(Map.of(
     "currency", "XOF",
     "transactionType", "cashout",
     "channel", "agent",
-    "isCash", true
+    "isCash", true,
+    "location", Map.of("latitude", 14.6928, "longitude", -17.4467, "accuracyMeters", 25) // optional GPS
 ));
 // occurredAt defaults to now. result: transactionId, decision (CLEAR|REVIEW|BLOCKED), riskScore,
-// deviceAction (ALLOW|SOFT_CHALLENGE|HARD_CHALLENGE|BLOCK|null), alerts[]
+// deviceAction (ALLOW|SOFT_CHALLENGE|HARD_CHALLENGE|BLOCK|null), alerts[],
+// location ({latitude, longitude (rounded to ~100 m), accuracyMeters, isMocked, gpsIpDistanceKm,
+// impliedTravelSpeedKmh, isNewGpsArea} or null — also on transactions.get())
 
 Map<String, Object> page = protegey.transactions.list(Map.of("decision", "BLOCKED", "limit", 50));
 Map<String, Object> tx = protegey.transactions.get("tx-00234"); // Protegey id or your external id
@@ -114,7 +117,7 @@ protegey.cashDeposits.get("dep-0001"); // Protegey cashDepositId or your externa
 
 ```java
 Map<String, Object> session = protegey.kyc.startSession("cust-9981", "awa@example.com", "+221771234567");
-// Send session.get("url") to your user (single-use, valid 30 minutes)
+// Send session.get("url") to your user (single-use, valid until session.get("expiresAt"))
 
 Map<String, Object> current = protegey.kyc.getSession((String) session.get("sessionId"));
 // status (final decision), outcome (SUCCESS|MANUAL|FAILED|null),
@@ -125,8 +128,13 @@ protegey.kyc.listSessions(Map.of("status", "IN_REVIEW"));
 protegey.kyc.findByExternalUserId("cust-9981");  // exact match on your customer id
 protegey.kyc.setStatus(sessionId, "APPROVED", "Checked in branch"); // = updateSession(status + reviewNote)
 protegey.kyc.updateSession(sessionId, Map.of("fullName", "Awa Diallo")); // correct an OCR misread
-protegey.kyc.resendSession(sessionId); // fresh link, status RESUBMITTED
+protegey.kyc.resendSession(sessionId); // fresh link + expiresAt, status RESUBMITTED
 ```
+
+Capture links expire at the returned `expiresAt` — your capture-link lifetime setting in the
+portal's KYC settings (30 min, 1 h, 24 h, 3 days or 7 days), **24 h by default**. Sessions also
+carry `kybClientId` (null unless requested from a KYB applicant, see below); `getSession()` adds
+`kybNameMatch` and `decision.documentFullName`.
 
 Photos come as pre-signed links in `images` (on `getSession()` and every `listSessions()` row):
 `documentFront`, `documentBack`, `selfie`, `documentFaceCrop`, each `{url, expiresAt}` or null.
@@ -184,6 +192,28 @@ protegey.kyb.reject(clientId, "Registration number does not match");
 protegey.kyb.requestMoreInfo(clientId, "Please upload the RCCM extract"); // returns applicationUrl
 ```
 
+#### Identity check of the person behind an applicant
+
+Once an applicant has submitted, ask its contact (or e.g. a director) to verify their identity — a
+standard KYC session linked to the applicant, callable any number of times:
+
+```java
+Map<String, Object> check = protegey.kyb.requestKycVerification(clientId, Map.of(
+    "fullName", "Jane Sample",       // compared with the name on the ID — defaults to the contact name
+    "email", "jane@example.com"      // Protegey emails the link ONLY when email is given
+));
+// {sessionId, kybClientId, url, expiresAt, emailedTo} — emailedTo is null without email:
+// relay url yourself. A KYB-linked link is valid at least 7 days.
+
+protegey.kyb.listKycVerifications(clientId);
+// {data: [{sessionId, status, outcome, recommendation, expectedName, documentFullName,
+//          nameMatch (MATCH|MISMATCH|null), livenessScore, faceMatchScore, livemode, createdAt, updatedAt}]}
+```
+
+`getApplicant()` returns the same list as `kycVerifications`. Results arrive on
+`kyc.status_changed` with `kybClientId` and `kybNameMatch`. A 404 means the applicant does not
+exist; a 400 means it has not submitted its application yet.
+
 ### Alerts
 
 ```java
@@ -201,8 +231,9 @@ protegey.deviceEvents.record(Map.of(
     "eventId", java.util.UUID.randomUUID().toString(),
     "visitorId", visitorIdFromYourFrontend,
     "externalCustomerId", "cust-9981",
-    "deviceAttributes", Map.of("platform", "android", "isRooted", false, "isVpnActive", true)
-)); // {recorded, action, riskScore}
+    "deviceAttributes", Map.of("platform", "android", "isRooted", false, "isVpnActive", true),
+    "location", Map.of("latitude", 14.6928, "longitude", -17.4467, "isMocked", false) // optional GPS
+)); // {recorded, action, riskScore} — a transaction within ~15 min reuses the location
 
 protegey.behavioralEvents.record(Map.of(
     "externalCustomerId", "cust-9981",
@@ -248,8 +279,10 @@ Failed deliveries are retried up to 5 times over ~3 hours — deduplicate on `ev
 unknown types.
 
 - `kyc.status_changed`: `{type, eventId, externalUserId, status, recommendation, sessionId,
-  decision}` — fires on an automatic result **and** on a manual status change (dashboard or
-  `kyc.setStatus()`/`updateSession()`). `sessionId` is the id `startSession()` returned.
+  kybClientId, kybNameMatch, decision}` — fires on an automatic result **and** on a manual status
+  change (dashboard or `kyc.setStatus()`/`updateSession()`). `sessionId` is the id
+  `startSession()` returned. `kybClientId` / `kybNameMatch` are null unless the session came from
+  `kyb.requestKycVerification()`.
 - `kyb.status_changed`: `{type, eventId, clientId, status, submissionStatus, decision}` —
   `submissionStatus` is UPPER_SNAKE_CASE (e.g. `APPROVED`).
 

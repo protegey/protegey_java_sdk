@@ -144,6 +144,36 @@ class PartnerApiTest {
         assertEquals("/partner-api/kyb/applicants/c%201", server.pathAndQuery);
     }
 
+    @Test
+    void kybRequestAndListKycVerifications() {
+        server.reply(201, "{\"sessionId\":\"s1\",\"kybClientId\":\"c1\",\"url\":\"https://capture.example.test/?enrollmentId=s1&token=t\","
+            + "\"expiresAt\":\"2026-12-03T09:00:00.000Z\",\"emailedTo\":null}");
+        Map<String, Object> check = protegey.kyb.requestKycVerification("c1", Map.of("fullName", "Jane Sample"));
+        assertEquals("POST", server.method);
+        assertEquals("/partner-api/kyb/applicants/c1/kyc-sessions", server.pathAndQuery);
+        assertTrue(server.body.contains("\"fullName\":\"Jane Sample\""));
+        assertFalse(server.body.contains("email"));
+        assertEquals("2026-12-03T09:00:00.000Z", check.get("expiresAt"));
+        assertNull(check.get("emailedTo"));
+
+        protegey.kyb.requestKycVerification("c1");
+        assertEquals("{}", server.body);
+
+        server.reply(200, "{\"data\":[{\"sessionId\":\"s1\",\"status\":\"APPROVED\",\"nameMatch\":\"MATCH\"}]}");
+        Map<String, Object> list = protegey.kyb.listKycVerifications("c1");
+        assertEquals("GET", server.method);
+        assertEquals("/partner-api/kyb/applicants/c1/kyc-sessions", server.pathAndQuery);
+        assertEquals("MATCH", ((Map<?, ?>) ((List<?>) list.get("data")).get(0)).get("nameMatch"));
+    }
+
+    @Test
+    void kybRequestKycVerificationBeforeSubmissionThrows400() {
+        server.reply(400, "{\"message\":\"The applicant has not submitted their application yet\",\"error\":\"Bad Request\",\"statusCode\":400}");
+        ProtegeyApiException e = assertThrows(ProtegeyApiException.class, () -> protegey.kyb.requestKycVerification("c1"));
+        assertEquals(400, e.getStatus());
+        assertEquals("The applicant has not submitted their application yet", e.getMessage());
+    }
+
     // ---- Transactions ----
 
     @Test
@@ -160,6 +190,20 @@ class PartnerApiTest {
 
         protegey.transactions.get("tx-ext-1");
         assertEquals("/partner-api/transactions/tx-ext-1", server.pathAndQuery);
+    }
+
+    @Test
+    void transactionsReportForwardsGpsLocation() {
+        server.reply(201, "{\"transactionId\":\"t1\",\"decision\":\"CLEAR\",\"riskScore\":0,\"alerts\":[],"
+            + "\"location\":{\"latitude\":5.36,\"longitude\":-4.008,\"accuracyMeters\":25,\"isMocked\":false,"
+            + "\"gpsIpDistanceKm\":null,\"impliedTravelSpeedKmh\":null,\"isNewGpsArea\":null}}");
+        Map<String, Object> result = protegey.transactions.report(Map.of(
+            "externalTransactionId", "tx-1", "externalCustomerId", "cust-1", "direction", "DEBIT",
+            "amount", 1000, "transactionType", "transfer",
+            "location", Map.of("latitude", 5.3599, "longitude", -4.0083, "isMocked", false)));
+        assertTrue(server.body.contains("\"location\":{"));
+        assertTrue(server.body.contains("\"latitude\":5.3599"));
+        assertEquals(false, ((Map<?, ?>) result.get("location")).get("isMocked"));
     }
 
     // ---- Alerts ----

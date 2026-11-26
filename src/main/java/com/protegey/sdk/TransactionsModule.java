@@ -38,10 +38,16 @@ public class TransactionsModule {
      * identifier), {@code lastPasswordChangeAt} / {@code lastEmailChangeAt} /
      * {@code lastPhoneChangeAt} (ISO 8601 — lets a rule flag activity right after a credential
      * change or SIM swap), {@code accountBalanceBefore} (positive; lets a rule flag an account
-     * drain).
+     * drain), {@code location} — the device's GPS position, a map with {@code latitude} and
+     * {@code longitude} (required), {@code accuracyMeters}, {@code capturedAt} (ISO 8601),
+     * {@code isMocked} (omit it to reuse the one sent with this customer's last device event,
+     * ~15 minutes).
      *
      * <p>Returns {@code {transactionId, decision (CLEAR|REVIEW|BLOCKED), riskScore,
-     * deviceAction (ALLOW|SOFT_CHALLENGE|HARD_CHALLENGE|BLOCK|null), alerts[]}}.
+     * deviceAction (ALLOW|SOFT_CHALLENGE|HARD_CHALLENGE|BLOCK|null), alerts[], location}} —
+     * {@code location} is null without GPS, else {@code {latitude, longitude} (rounded to ~100 m),
+     * accuracyMeters, isMocked, gpsIpDistanceKm, impliedTravelSpeedKmh, isNewGpsArea} (all but
+     * {@code isMocked} nullable).
      */
     public Map<String, Object> report(Map<String, Object> input) {
         Map<String, Object> body = new HashMap<>(input);
@@ -61,7 +67,8 @@ public class TransactionsModule {
 
     /**
      * One transaction by Protegey {@code transactionId} or your {@code externalTransactionId},
-     * with up to 50 alerts. Carries no amount/currency/direction.
+     * with up to 50 alerts and {@code location} (same shape as {@link #report}). Carries no
+     * amount/currency/direction.
      */
     public Map<String, Object> get(String id) {
         return http.get(BASE + "/" + Client.segment(id));

@@ -19,6 +19,11 @@ import java.util.Map;
  * {@code documentBack}, {@code selfie}, {@code documentFaceCrop}, each
  * {@code {url, expiresAt}} or null. Links are valid for 1 hour and re-issued on every GET, so fetch
  * the session again rather than storing a URL.
+ *
+ * <p>Capture links expire at the returned {@code expiresAt}: your capture-link lifetime setting in
+ * the portal's KYC settings (30 min, 1 h, 24 h, 3 days or 7 days — 24 h by default; at least 7
+ * days for a check requested with {@link KybModule#requestKycVerification}). Sessions carry
+ * {@code kybClientId} — the KYB applicant they were requested for, or null.
  */
 public class KycModule {
     private static final String BASE = "/partner-api/kyc/sessions";
@@ -31,8 +36,8 @@ public class KycModule {
 
     /**
      * Starts an identity verification session for one of your end users. Returns
-     * {@code {sessionId, url}} — {@code url} is the hosted capture page; its token is single-use
-     * and valid for 30 minutes.
+     * {@code {sessionId, url, expiresAt}} — {@code url} is the hosted capture page; its token is
+     * single-use and valid until {@code expiresAt} (24 h by default).
      */
     public Map<String, Object> startSession(String externalUserId) {
         return startSession(externalUserId, null, null);
@@ -61,7 +66,7 @@ public class KycModule {
      * in responses ({@code "IN_REVIEW"}) for you.
      *
      * <p>Each row: {@code sessionId, externalUserId, status, outcome, recommendation, fullName,
-     * documentType, country, createdAt, images} (pre-signed links, no base64).
+     * documentType, country, createdAt, images, kybClientId} (pre-signed links, no base64).
      */
     public Map<String, Object> listSessions(Map<String, Object> query) {
         Map<String, Object> q = query != null ? new HashMap<>(query) : new HashMap<>();
@@ -87,7 +92,11 @@ public class KycModule {
      * {@code decision} (null until a result exists), extracted identity fields, scores,
      * {@code images} (pre-signed links, valid 1 hour) and — kept for backward compatibility —
      * base64 photos ({@code documentPhoto}, {@code documentBackPhoto}, {@code selfiePhoto},
-     * {@code documentFaceCrop}; may arrive a couple of minutes after the decision). Use it as a
+     * {@code documentFaceCrop}; may arrive a couple of minutes after the decision),
+     * {@code kybClientId} and {@code kybNameMatch} ({@code MATCH} | {@code MISMATCH} | null — the
+     * name on the document compared with the name expected by the KYB check; null when not
+     * KYB-linked or not compared yet). {@code decision.documentFullName} is the name read on the
+     * document (may be null or absent). Use it as a
      * polling fallback for the {@code kyc.status_changed} webhook, whose {@code sessionId} is this
      * same id.
      */
@@ -101,7 +110,7 @@ public class KycModule {
      * {@code documentType}, {@code idDocumentNumber}, {@code sex}, {@code dateOfBirth},
      * {@code placeOfBirth}, {@code profession}, {@code dateOfIssue}, {@code dateOfExpiration},
      * {@code status} ({@code APPROVED} | {@code DECLINED} | {@code IN_REVIEW}),
-     * {@code reviewNote}. Returns {@code {sessionId, externalUserId, status, outcome,
+     * {@code reviewNote}. Returns {@code {sessionId, externalUserId, kybClientId, status, outcome,
      * recommendation, decision}}. A status override is recorded in {@code decision.manualReview}
      * ({@code reviewedBy}, {@code reviewedAt}, {@code previousStatus}/{@code newStatus} in
      * UPPER_SNAKE_CASE, {@code note}) and fires the {@code kyc.status_changed} webhook like an
@@ -124,8 +133,8 @@ public class KycModule {
     }
 
     /**
-     * Issues a fresh 30-minute capture link and sets the status to {@code RESUBMITTED}. Returns
-     * {@code {sessionId, url}}. Does not count against the sandbox quota.
+     * Issues a fresh capture link and sets the status to {@code RESUBMITTED}. Returns
+     * {@code {sessionId, url, expiresAt}}. Does not count against the sandbox quota.
      */
     public Map<String, Object> resendSession(String sessionId) {
         return http.post(BASE + "/" + Client.segment(sessionId) + "/resend", null);

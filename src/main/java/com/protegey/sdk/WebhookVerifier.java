@@ -24,8 +24,10 @@ import java.util.Locale;
  * {@code eventId}, and ignore types you don't know.
  *
  * <p>{@code kyc.status_changed} = {@code {type, eventId, externalUserId, status, recommendation,
- * sessionId, decision}} — fired on an automatic result and on a manual status change (dashboard or
- * {@link KycModule#updateSession}); {@code sessionId} is the id {@code startSession()} returned.
+ * sessionId, kybClientId, kybNameMatch, decision}} — fired on an automatic result and on a manual
+ * status change (dashboard or {@link KycModule#updateSession}); {@code sessionId} is the id
+ * {@code startSession()} returned; {@code kybClientId} / {@code kybNameMatch} are null unless the
+ * session was requested with {@link KybModule#requestKycVerification}.
  * {@code kyb.status_changed} = {@code {type, eventId, clientId, status, submissionStatus,
  * decision}}. Every status-like value ({@code status}, {@code submissionStatus},
  * {@code decision}, {@code decision.manualReview.previousStatus/newStatus},

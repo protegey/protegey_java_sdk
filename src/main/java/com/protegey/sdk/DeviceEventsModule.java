@@ -18,7 +18,10 @@ public class DeviceEventsModule {
      * {@code timezone}, {@code language}, {@code appVersion}, {@code isRooted},
      * {@code isEmulator}, {@code connectionType}, {@code devicePixelRatio}, {@code manufacturer},
      * {@code cpuCores}, {@code totalMemoryMb}, {@code totalStorageMb}, {@code freeStorageMb},
-     * {@code batteryLevel}, {@code isCharging}, {@code isVpnActive} (unknown keys are dropped).
+     * {@code batteryLevel}, {@code isCharging}, {@code isVpnActive} (unknown keys are dropped),
+     * {@code location} — GPS position, a map with {@code latitude} and {@code longitude}
+     * (required), {@code accuracyMeters}, {@code capturedAt} (ISO 8601), {@code isMocked}; a
+     * transaction of the same customer within ~15 minutes reuses it.
      *
      * <p>Returns {@code {recorded, action (ALLOW|SOFT_CHALLENGE|HARD_CHALLENGE|BLOCK), riskScore}}.
      */

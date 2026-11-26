@@ -47,7 +47,11 @@ public class KybModule {
         return page;
     }
 
-    /** One applicant, including its {@code submission}. */
+    /**
+     * One applicant, including its {@code submission} and {@code kycVerifications} (the identity
+     * checks requested with {@link #requestKycVerification}, same shape as
+     * {@link #listKycVerifications} rows).
+     */
     public Map<String, Object> getApplicant(String clientId) {
         return strip(http.get(BASE + "/" + Client.segment(clientId)));
     }
@@ -126,6 +130,42 @@ public class KybModule {
             body.put(REQUEST_MORE_INFO.equalsIgnoreCase(decision) ? "note" : "reason", reasonOrNote);
         }
         return strip(http.patch(BASE + "/" + Client.segment(clientId) + "/decide", body));
+    }
+
+    /**
+     * Asks the person behind a submitted application to verify their identity — a standard KYC
+     * session linked to the applicant (billed and sandbox-scoped like {@link KycModule#startSession}).
+     * Callable any number of times; each call creates a new session.
+     */
+    public Map<String, Object> requestKycVerification(String clientId) {
+        return requestKycVerification(clientId, null);
+    }
+
+    /**
+     * Same as {@link #requestKycVerification(String)}, with optional {@code options} keys:
+     * {@code fullName} (compared with the name on the ID document — {@code kybNameMatch}; defaults
+     * to the applicant contact name), {@code email} (Protegey emails the link only when it is set),
+     * {@code phone} (defaults to the applicant contact phone), {@code externalUserId}.
+     *
+     * <p>Returns {@code {sessionId, kybClientId, url, expiresAt, emailedTo}} — {@code expiresAt} is
+     * your capture-link lifetime setting, never less than 7 days here; {@code emailedTo} is null when
+     * no {@code email} was given (relay {@code url} yourself). Results arrive on
+     * {@code kyc.status_changed} (with {@code kybClientId}). Throws a 404 when the applicant does
+     * not exist and a 400 when it has not submitted its application yet.
+     */
+    public Map<String, Object> requestKycVerification(String clientId, Map<String, Object> options) {
+        Map<String, Object> body = options != null ? new HashMap<>(options) : new HashMap<>();
+        return http.post(BASE + "/" + Client.segment(clientId) + "/kyc-sessions", body);
+    }
+
+    /**
+     * Every identity check requested for an applicant, newest first: {@code {data}}, each row
+     * {@code sessionId, status, outcome, recommendation, expectedName, documentFullName, nameMatch
+     * (MATCH | MISMATCH | null), livenessScore, faceMatchScore, livemode, createdAt, updatedAt}. Use
+     * {@link KycModule#getSession} for images and full detail.
+     */
+    public Map<String, Object> listKycVerifications(String clientId) {
+        return http.get(BASE + "/" + Client.segment(clientId) + "/kyc-sessions");
     }
 
     @SuppressWarnings("unchecked")

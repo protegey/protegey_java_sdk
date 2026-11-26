@@ -167,6 +167,35 @@ class PartnerApiTest {
     }
 
     @Test
+    void kybImportAndGetImport() {
+        server.reply(200, "{\"totalRows\":2,\"importedCount\":1,\"rejectedCount\":1,"
+            + "\"errors\":[{\"row\":1,\"field\":null,\"code\":\"contact_required\",\"error\":\"contactEmail or contactPhone is required\"}],"
+            + "\"importId\":\"i1\"}");
+        Map<String, Object> report = protegey.kyb.importApplicants(List.of(
+            Map.of("legalName", "Acme SARL", "country", "CI", "contactName", "Jane", "contactEmail", "jane@example.com"),
+            Map.of("legalName", "Beta SA", "country", "SN", "contactName", "Moussa")));
+        assertEquals("POST", server.method);
+        assertEquals("/partner-api/kyb/applicants/import", server.pathAndQuery);
+        assertTrue(server.body.contains("\"legalName\":\"Acme SARL\""));
+        assertFalse(server.body.contains("dryRun"));
+        assertEquals("i1", report.get("importId"));
+        assertEquals("contact_required", ((Map<?, ?>) ((List<?>) report.get("errors")).get(0)).get("code"));
+
+        protegey.kyb.importApplicants(List.of(Map.of("legalName", "Acme SARL")), true);
+        assertTrue(server.body.contains("\"dryRun\":true"));
+
+        server.reply(200, "{\"importId\":\"i1\",\"status\":\"COMPLETED\",\"flaggedClientIds\":[\"c9\"]}");
+        Map<String, Object> batch = protegey.kyb.getImport("i1");
+        assertEquals("GET", server.method);
+        assertEquals("/partner-api/kyb/imports/i1", server.pathAndQuery);
+        assertEquals(List.of("c9"), batch.get("flaggedClientIds"));
+
+        server.reply(200, "{\"data\":[],\"total\":0,\"page\":1,\"limit\":20,\"totalPages\":1}");
+        protegey.kyb.listApplicants(Map.of("importId", "i1"));
+        assertTrue(server.pathAndQuery.contains("importId=i1"));
+    }
+
+    @Test
     void kybRequestKycVerificationBeforeSubmissionThrows400() {
         server.reply(400, "{\"message\":\"The applicant has not submitted their application yet\",\"error\":\"Bad Request\",\"statusCode\":400}");
         ProtegeyApiException e = assertThrows(ProtegeyApiException.class, () -> protegey.kyb.requestKycVerification("c1"));

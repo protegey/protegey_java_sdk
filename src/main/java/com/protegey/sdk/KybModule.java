@@ -11,7 +11,8 @@ import java.util.Map;
  * <p>Applicant {@code status}: {@code INVITED}, {@code PENDING_REVIEW},
  * {@code MORE_INFO_REQUIRED}, {@code ACTIVE}, {@code REJECTED}. {@code submission.status}:
  * {@code PENDING}, {@code SUBMITTED}, {@code MORE_INFO_REQUIRED}, {@code APPROVED},
- * {@code REJECTED}.
+ * {@code REJECTED}. {@code source} is {@code invitation} | {@code import}; imported applicants
+ * also carry {@code externalReference} and {@code importBatchId} (both null otherwise).
  *
  * <p>Internal fields the backend currently leaks ({@code tokenHash}, {@code documentFilePath})
  * are stripped from every response this module returns.
@@ -33,7 +34,8 @@ public class KybModule {
     /**
      * Lists applicants, newest first. Optional {@code query} keys: {@code page}, {@code limit},
      * {@code search}, {@code status} (any case), {@code stage} ({@code invited} |
-     * {@code responded}). Each row includes {@code submission} (or null).
+     * {@code responded}), {@code importId} (only the applicants created by that import). Each row
+     * includes {@code submission} (or null).
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> listApplicants(Map<String, Object> query) {
@@ -77,6 +79,48 @@ public class KybModule {
         if (contactPhone != null) body.put("contactPhone", contactPhone);
         if (templateId != null) body.put("templateId", templateId);
         return strip(http.post(BASE, body));
+    }
+
+    /**
+     * Imports your existing KYB base — shorthand for {@code importApplicants(applicants, false)}.
+     */
+    public Map<String, Object> importApplicants(List<Map<String, Object>> applicants) {
+        return importApplicants(applicants, false);
+    }
+
+    /**
+     * Imports 1–1000 already-known businesses ({@code POST .../import}, same columns as the portal's
+     * CSV template). Each applicant: {@code legalName}, {@code country} (ISO alpha-2),
+     * {@code contactName} (required), {@code contactEmail} and/or {@code contactPhone} (at least
+     * one), optional {@code registrationNumber}, {@code tradingName}, {@code legalStatus},
+     * {@code incorporationDate} (YYYY-MM-DD), {@code address}, {@code website}, {@code owners}
+     * ({@code [{name, ownershipPercent?}]}), {@code directors} ({@code [{name, role?}]}),
+     * {@code status} ({@code APPROVED} default | {@code PENDING_REVIEW}), {@code externalReference}.
+     * Imported applicants are created already submitted and are never emailed. {@code dryRun}
+     * only validates.
+     *
+     * <p>Returns {@code {totalRows, importedCount, rejectedCount, errors[{row (0-based), field
+     * (or null), code, error}], importId (or null)}}; {@code code} is {@code required} |
+     * {@code invalid} | {@code contact_required} | {@code unknown_field} | {@code column_count} |
+     * {@code duplicate_in_file} | {@code duplicate_existing}. Invalid or duplicate applicants are
+     * reported and skipped, never failing the call. Screening runs in the background — follow it
+     * with {@link #getImport}.
+     */
+    public Map<String, Object> importApplicants(List<Map<String, Object>> applicants, boolean dryRun) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("applicants", applicants);
+        if (dryRun) body.put("dryRun", true);
+        return http.post(BASE + "/import", body);
+    }
+
+    /**
+     * Progress of an import's background screening: {@code {importId, status (SCREENING |
+     * COMPLETED), source, totalRows, importedCount, rejectedCount, screenedCount, flaggedCount,
+     * flaggedClientIds[], createdAt, completedAt (or null)}}. Protegey never auto-rejects a match —
+     * review {@code flaggedClientIds} yourself. Throws a 404 for an unknown import.
+     */
+    public Map<String, Object> getImport(String importId) {
+        return http.get("/partner-api/kyb/imports/" + Client.segment(importId));
     }
 
     /**

@@ -192,6 +192,31 @@ protegey.kyb.reject(clientId, "Registration number does not match");
 protegey.kyb.requestMoreInfo(clientId, "Please upload the RCCM extract"); // returns applicationUrl
 ```
 
+#### Importing your existing KYB base
+
+Bring in businesses you have already verified (1–1000 per call, same columns as the portal's CSV
+template). Imported clients are created already submitted (`APPROVED` by default, or
+`PENDING_REVIEW`) and are **never emailed**:
+
+```java
+Map<String, Object> report = protegey.kyb.importApplicants(List.of(Map.of(
+    "legalName", "Acme SARL", "country", "CI", "contactName", "Jane Sample",
+    "contactEmail", "jane@example.com", "registrationNumber", "CI-ABJ-2019-B-1234",
+    "owners", List.of(Map.of("name", "Jane Sample", "ownershipPercent", 60)),
+    "externalReference", "crm-42"
+)), false); // true = dry run, only validates
+// {totalRows, importedCount, rejectedCount, errors[{row (0-based), field, code, error}], importId}
+// invalid or duplicate rows are reported in errors and skipped — they never fail the call
+
+protegey.kyb.getImport((String) report.get("importId"));
+// {status (SCREENING|COMPLETED), screenedCount, flaggedCount, flaggedClientIds[], ...}
+protegey.kyb.listApplicants(Map.of("importId", report.get("importId")));
+```
+
+Sanctions/PEP screening runs in the background after the import. Protegey never auto-rejects a
+match — review `flaggedClientIds` yourself. Applicants carry `source` (`invitation` | `import`),
+`externalReference` and `importBatchId`.
+
 #### Identity check of the person behind an applicant
 
 Once an applicant has submitted, ask its contact (or e.g. a director) to verify their identity — a

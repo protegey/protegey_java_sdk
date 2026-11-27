@@ -314,6 +314,47 @@ class PartnerApiTest {
         assertEquals("CONFIRMED_FRAUD", first.get("category"));
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void sharedSignalCheckExposesGroupMatches() {
+        server.reply(201, "{\"flagged\":true,\"category\":\"CONFIRMED_FRAUD\",\"reportedDaysAgo\":12,\"flagConfidence\":86,\"matchCount\":2,\"groupMatchCount\":1,"
+            + "\"matches\":[{\"category\":\"CONFIRMED_FRAUD\",\"reportedDaysAgo\":12,\"groupEntity\":\"Sample Pay Senegal\"},"
+            + "{\"category\":\"IDENTITY_THEFT\",\"reportedDaysAgo\":140,\"groupEntity\":null}]}");
+        Map<String, Object> r = protegey.sharedSignal.check(Map.of("phoneNumber", "+221771234567"));
+        assertEquals(1.0, r.get("groupMatchCount"));
+        List<Map<String, Object>> matches = (List<Map<String, Object>>) r.get("matches");
+        assertEquals("Sample Pay Senegal", matches.get(0).get("groupEntity"));
+        assertNull(matches.get(1).get("groupEntity"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void kycGetSessionExposesGroupPresenceAndNetworkFlagGroupEntities() {
+        server.reply(200, "{\"sessionId\":\"s1\",\"status\":\"APPROVED\",\"groupPresence\":[{\"entity\":\"Sample Pay Senegal\",\"status\":\"APPROVED\","
+            + "\"createdAt\":\"2026-03-02T10:00:00.000Z\",\"matchedOn\":[\"FACE\",\"GOVERNMENT_ID\"]}],"
+            + "\"decision\":{\"identityResolution\":{\"networkFlag\":{\"flagged\":true,\"matchCount\":1,\"groupEntities\":[\"Sample Pay Senegal\"]}}}}");
+        Map<String, Object> s = protegey.kyc.getSession("s1");
+        Map<String, Object> presence = ((List<Map<String, Object>>) s.get("groupPresence")).get(0);
+        assertEquals("Sample Pay Senegal", presence.get("entity"));
+        assertEquals("APPROVED", presence.get("status"));
+        assertEquals(List.of("FACE", "GOVERNMENT_ID"), presence.get("matchedOn"));
+        Map<String, Object> flag = (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) s.get("decision")).get("identityResolution")).get("networkFlag");
+        assertEquals(List.of("Sample Pay Senegal"), flag.get("groupEntities"));
+
+        server.reply(200, "{\"sessionId\":\"s2\",\"status\":\"APPROVED\",\"groupPresence\":null}");
+        assertNull(protegey.kyc.getSession("s2").get("groupPresence"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void kybScreenExposesNetworkFlagGroupEntities() {
+        server.reply(200, "{\"business\":{\"decision\":\"CLEAR\"},\"owners\":[],\"networkFlags\":[{\"label\":\"Business phone\",\"flagged\":true,"
+            + "\"matchCount\":1,\"flagConfidence\":40,\"groupEntities\":[\"Sample Pay Senegal\"]}]}");
+        Map<String, Object> s = protegey.kyb.screen("c1");
+        Map<String, Object> flag = ((List<Map<String, Object>>) s.get("networkFlags")).get(0);
+        assertEquals(List.of("Sample Pay Senegal"), flag.get("groupEntities"));
+    }
+
     // ---- Errors ----
 
     @Test

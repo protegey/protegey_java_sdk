@@ -135,8 +135,12 @@ public class KybModule {
     /**
      * Runs sanctions/PEP screening of the business and each declared owner, and stores the result
      * on the submission. Returns {@code {business, owners[], screenedAt, provider, providers,
-     * defaultListChecked, degraded, fallbackReason?}}; each {@code decision} is {@code BLOCKED} |
-     * {@code REVIEW} | {@code CLEAR}.
+     * defaultListChecked, degraded, fallbackReason?, networkFlags?}}; each {@code decision} is
+     * {@code BLOCKED} | {@code REVIEW} | {@code CLEAR}. {@code networkFlags} (fixed questionnaire
+     * only: shared-network check of the business phone / owner tax ids) is
+     * {@code [{label, flagged, matchCount, flagConfidence, groupEntities?}]} —
+     * {@code groupEntities} lists the entities of your own partner group that reported it (the
+     * public network stays anonymous).
      */
     public Map<String, Object> screen(String clientId) {
         return http.get(BASE + "/" + Client.segment(clientId) + "/screen");

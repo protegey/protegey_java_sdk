@@ -96,7 +96,13 @@ public class KycModule {
      * {@code kybClientId} and {@code kybNameMatch} ({@code MATCH} | {@code MISMATCH} | null — the
      * name on the document compared with the name expected by the KYB check; null when not
      * KYB-linked or not compared yet). {@code decision.documentFullName} is the name read on the
-     * document (may be null or absent). Use it as a
+     * document (may be null or absent); {@code decision.identityResolution.networkFlag}, when
+     * present, may carry {@code groupEntities} (the entities of your own partner group that
+     * reported this person). Partner groups only: {@code groupPresence} lists the same person's
+     * KYC at sister entities of your group ({@code [{entity, status, createdAt, matchedOn}]},
+     * {@code matchedOn} among {@code FACE} | {@code GOVERNMENT_ID} | {@code PHONE} |
+     * {@code EMAIL}), or is null when none or when you are in no group — information for your
+     * reviewer, being a client of two sister entities is normal. Use it as a
      * polling fallback for the {@code kyc.status_changed} webhook, whose {@code sessionId} is this
      * same id.
      */

@@ -21,9 +21,13 @@ public class SharedSignalModule {
      * match, your own risk profile for that customer is bumped.
      *
      * <p>Returns {@code {flagged, category, reportedDaysAgo, flagConfidence (0–100|null),
-     * matchCount, matches[{category, reportedDaysAgo}]}}; {@code category} is
-     * {@code CONFIRMED_FRAUD} | {@code IDENTITY_THEFT} | {@code MONEY_LAUNDERING} | {@code OTHER}
-     * (null when not flagged). The reporting institution is never disclosed.
+     * matchCount, groupMatchCount, matches[{category, reportedDaysAgo, groupEntity}]}};
+     * {@code category} is {@code CONFIRMED_FRAUD} | {@code IDENTITY_THEFT} |
+     * {@code MONEY_LAUNDERING} | {@code OTHER} (null when not flagged). The reporting institution
+     * is never disclosed, except a sister entity of your own partner group: {@code groupEntity} is
+     * then its name (null for the public network, which stays anonymous) and
+     * {@code groupMatchCount} counts those reports (0 when you are in no group). Both are optional
+     * (absent on older API versions).
      */
     public Map<String, Object> check(Map<String, Object> identifiers) {
         return http.post("/partner-api/shared-signal/check", identifiers);

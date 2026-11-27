@@ -146,6 +146,11 @@ A manual status change (`setStatus()`/`updateSession()` or the dashboard) is rec
 `decision.manualReview` (`reviewedBy`, `reviewedAt`, `previousStatus`, `newStatus`, `note`) and
 fires the `kyc.status_changed` webhook like an automatic result.
 
+Partner groups only: `getSession()` carries `groupPresence` — the same person's KYC at sister
+entities of your group (`[{entity, status, createdAt, matchedOn: [FACE, GOVERNMENT_ID, ...]}]`), or
+null when none or when you are in no group. It's information for your reviewer: being a client of
+two sister entities is normal.
+
 ### 3D liveness
 
 A separate, paid product (billed per check where liveness was proven); KYC is unaffected.
@@ -277,7 +282,9 @@ Map<String, Object> signal = protegey.sharedSignal.check(Map.of(
     "phoneNumber", "+221771234567",
     "externalCustomerId", "cust-9981"
 ));
-// flagged, category, reportedDaysAgo, flagConfidence, matchCount, matches[{category, reportedDaysAgo}]
+// flagged, category, reportedDaysAgo, flagConfidence, matchCount, groupMatchCount,
+// matches[{category, reportedDaysAgo, groupEntity}] — groupEntity names a sister entity of your own
+// partner group; it is null for the public network, which stays anonymous.
 ```
 
 ## Verifying incoming webhooks
